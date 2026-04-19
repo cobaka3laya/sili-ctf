@@ -1,0 +1,18 @@
+db:
+  postgres:
+    address: "localhost:5432"
+  redis:
+    address: "localhost:6379"
+data:
+  user:
+    cache:
+      expires: 30
+    username:
+      min_length: 3
+      max_length: 20
+  user_auth_data:
+    cache:
+      expires: 30
+  token:
+    refresh:
+      min_ttl: 5
