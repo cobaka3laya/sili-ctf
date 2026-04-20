@@ -52,9 +52,9 @@ type RefreshTokenConfig struct {
 
 var cfg *Config
 
-func MustLoad() (*Config, error) {
+func MustLoad() (*Config) {
 	if cfg != nil {
-		return cfg, nil
+		return cfg
 	}
 
 	err := cleanenv.ReadConfig("config/config.yaml", cfg)
@@ -63,5 +63,5 @@ func MustLoad() (*Config, error) {
 		panic(err)
 	}
 
-	return cfg, nil
+	return cfg
 }

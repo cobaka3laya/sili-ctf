@@ -22,11 +22,7 @@ var ErrUsernameTooLong = errors.New("username is too long")
 func NewUser(username string, createdAt time.Time) (*User, error) {
 	usrName := strings.TrimSpace(username)
 
-	config, err := config.MustLoad()
-
-	if err != nil {
-		return nil, err
-	}
+	config := config.MustLoad()
 
 	if config.Data.User.Username.MinLength > utf8.RuneCountInString(usrName) {
 		return nil, ErrUsernameTooShort
