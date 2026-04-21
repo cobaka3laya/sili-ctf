@@ -3,25 +3,25 @@ package repository
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 )
 
 type RefreshTokenRepository interface {
-	CreateRefreshToken(ctx context.Context, ownerID int64, tokenHash string, expiresAt time.Time) (*domain.RefreshToken, error)
+	CreateRefreshToken(ctx context.Context, data dto.CreateRefreshTokenDTOInput) (*dto.CreateRefreshTokenDTOOutput, error)
 
-	GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*domain.RefreshToken, error)
+	GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*dto.GetRefreshTokenByOwnerIDDTOOutput, error)
 
 	DeleteRefreshTokenByOwnerID(ctx context.Context, id int64) error
 }
 
 type RefreshTokenCacheRepository interface {
-	SetRefreshToken(ctx context.Context, refreshToken domain.RefreshToken) error
+	SetRefreshToken(ctx context.Context, data dto.SetRefreshTokenDTOInput) error
 
-	GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*domain.RefreshToken, error)
+	GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*dto.GetRefreshTokenByOwnerIDDTOOutput, error)
 
 	DeleteRefreshTokenByOwnerID(ctx context.Context, id int64) error
 }
 
 var ErrRefreshTokenNotFound = errors.New("refresh token not found")
+var ErrInvalidRefreshTokenFound = errors.New("invalid refresh token found")

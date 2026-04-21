@@ -2,12 +2,11 @@ package repository_redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/cobaka3laya/sili-ctf/services/users/config"
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
@@ -20,40 +19,76 @@ func NewUserCacheRepoRedis(client *redis.Client) repository.UserCacheRepository 
 	return &UserRepoCacheRedis{client: client}
 }
 
-func (r *UserRepoCacheRedis) SetUser(ctx context.Context, user domain.User) error {
-	userJson, err := json.Marshal(user)
+func (r *UserRepoCacheRedis) key(id int64) string {
+	return fmt.Sprintf("services:users:cache:users:id:%d", id)
+}
 
-	if err != nil {
-		return err
+func (r *UserRepoCacheRedis) SetUser(ctx context.Context, data dto.SetUserDTOInput) error {
+	pipe := r.client.Pipeline()
+	currentKey := r.key(data.ID)
+
+	values := map[string]any{}
+
+	if data.Username != nil {
+		values["username"] = *data.Username
 	}
 
-	cfg := config.MustLoad()
+	if data.CreatedAt != nil {
+		values["created_at"] = data.CreatedAt.Format(time.RFC3339)
+	}
 
-	err = r.client.Set(ctx, fmt.Sprintf("services:users:cache:users:%d", user.ID), userJson, time.Minute*time.Duration(cfg.Data.User.Cache.Expires)).Err()
+	if data.ProfilePictureURL != nil {
+		values["profile_picture_url"] = *data.ProfilePictureURL
+	}
 
+	if len(values) == 0 {
+		return repository.ErrInvalidUserFound
+	}
+
+	pipe.HSet(ctx, currentKey, values)
+	pipe.Expire(ctx, currentKey, time.Duration(config.MustLoad().Data.User.Cache.Expires)*time.Minute)
+	_, err := pipe.Exec(ctx)
 	return err
 }
 
-func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	user := domain.User{}
-	val, err := r.client.Get(ctx, fmt.Sprintf("services:users:cache:users:%d", id)).Result()
+func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error) {
+	out := &dto.GetUserByIDDTOOutput{}
+	values, err := r.client.HGetAll(ctx, r.key(id)).Result()
 
 	if err != nil {
-		if err == redis.Nil {
-			return nil, repository.ErrUserNotFound
+		return nil, err
+	}
+
+	if len(values) == 0 {
+		return nil, repository.ErrUserNotFound
+	}
+
+	if username, ok := values["username"]; ok && username != "" {
+		out.Username = username
+	} else {
+		return nil, repository.ErrInvalidUserFound
+	}
+
+	if createdAt, ok := values["created_at"]; ok && createdAt != "" {
+		t, err := time.Parse(time.RFC3339, createdAt)
+		if err != nil {
+			return nil, err
 		}
-		return nil, err
+		out.CreatedAt = t
+	} else {
+		return nil, repository.ErrInvalidUserFound
 	}
 
-	err = json.Unmarshal([]byte(val), &user)
-
-	if err != nil {
-		return nil, err
+	profilePictureURL, ok := values["profile_picture_url"]
+	if !ok {
+		out.ProfilePictureURL = ""
+	} else {
+		out.ProfilePictureURL = profilePictureURL
 	}
 
-	return &user, nil
+	return out, nil
 }
 
 func (r *UserRepoCacheRedis) DeleteUserByID(ctx context.Context, id int64) error {
-	return r.client.Del(ctx, fmt.Sprintf("services:users:cache:users:%d", id)).Err()
+	return r.client.Del(ctx, r.key(id)).Err()
 }

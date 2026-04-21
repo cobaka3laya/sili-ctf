@@ -2,11 +2,10 @@ package repository_postgres
 
 import (
 	"context"
-	"time"
 
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/dbtx"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/txcontext"
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,24 +26,19 @@ func (r *RefreshTokenRepoPG) getExecutor(ctx context.Context) dbtx.DBTX {
 	return r.pool
 }
 
-func (r *RefreshTokenRepoPG) CreateRefreshToken(ctx context.Context, ownerID int64, tokenHash string, expiresAt time.Time) (*domain.RefreshToken, error) {
+func (r *RefreshTokenRepoPG) CreateRefreshToken(ctx context.Context, data dto.CreateRefreshTokenDTOInput) (*dto.CreateRefreshTokenDTOOutput, error) {
 	executor := r.getExecutor(ctx)
 
-	createdRefreshToken, err := domain.NewRefreshToken(ownerID, tokenHash, expiresAt)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = executor.QueryRow(
+	createdRefreshToken := &dto.CreateRefreshTokenDTOOutput{OwnerID: data.OwnerID, TokenHash: data.TokenHash, ExpiresAt: data.ExpiresAt}
+	err := executor.QueryRow(
 		ctx,
 		`INSERT INTO
 		refresh_tokens (owner_id, token_hash, expires_at)
 	 	VALUES ($1, $2, $3)
-		RETURNING ID`,
-		ownerID,
-		tokenHash,
-		expiresAt,
+		RETURNING id`,
+		data.OwnerID,
+		data.TokenHash,
+		data.ExpiresAt,
 		"",
 	).Scan(&createdRefreshToken.ID)
 
@@ -55,16 +49,16 @@ func (r *RefreshTokenRepoPG) CreateRefreshToken(ctx context.Context, ownerID int
 	return createdRefreshToken, nil
 }
 
-func (r *RefreshTokenRepoPG) GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*domain.RefreshToken, error) {
-	refreshToken := &domain.RefreshToken{}
+func (r *RefreshTokenRepoPG) GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*dto.GetRefreshTokenByOwnerIDDTOOutput, error) {
+	refreshToken := &dto.GetRefreshTokenByOwnerIDDTOOutput{}
 
 	err := r.pool.QueryRow(
 		ctx,
-		`SELECT id, owner_id, token_hash, expires_at
+		`SELECT id, token_hash, expires_at
 		FROM refresh_tokens
 		WHERE owner_id = $1`,
 		id,
-	).Scan(&refreshToken.ID, &refreshToken.OwnerID, &refreshToken.TokenHash, &refreshToken.ExpiresAt)
+	).Scan(&refreshToken.ID, &refreshToken.TokenHash, &refreshToken.ExpiresAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -87,9 +81,5 @@ func (r *RefreshTokenRepoPG) DeleteRefreshTokenByOwnerID(ctx context.Context, id
 		id,
 	)
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

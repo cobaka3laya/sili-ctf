@@ -2,11 +2,11 @@ package repository_redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
@@ -19,38 +19,70 @@ func NewRefreshTokenCacheRepoRedis(client *redis.Client) repository.RefreshToken
 	return &RefreshTokenRepoCacheRedis{client: client}
 }
 
-func (r *RefreshTokenRepoCacheRedis) SetRefreshToken(ctx context.Context, refreshToken domain.RefreshToken) error {
-	refreshTokenJson, err := json.Marshal(refreshToken)
+func (r *RefreshTokenRepoCacheRedis) key(id int64) string {
+	return fmt.Sprintf("services:users:cache:refresh_tokens:owner_id:%d", id)
+}
 
-	if err != nil {
-		return err
+func (r *RefreshTokenRepoCacheRedis) SetRefreshToken(ctx context.Context, data dto.SetRefreshTokenDTOInput) error {
+	pipe := r.client.Pipeline()
+	currentKey := r.key(data.OwnerID)
+
+	values := map[string]any{
+		"id":         data.ID,
+		"token_hash": data.TokenHash,
+		"expires_at": data.ExpiresAt.Format(time.RFC3339),
 	}
 
-	err = r.client.Set(ctx, fmt.Sprintf("services:users:cache:refresh_tokens:%d", refreshToken.ID), refreshTokenJson, time.Until(refreshToken.ExpiresAt)).Err()
-
+	pipe.HSet(ctx, currentKey, values)
+	pipe.Expire(ctx, currentKey, time.Until(data.ExpiresAt))
+	_, err := pipe.Exec(ctx)
 	return err
 }
 
-func (r *RefreshTokenRepoCacheRedis) GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*domain.RefreshToken, error) {
-	refreshToken := domain.RefreshToken{}
-	val, err := r.client.Get(ctx, fmt.Sprintf("services:users:cache:refresh_tokens:%d", id)).Result()
+func (r *RefreshTokenRepoCacheRedis) GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*dto.GetRefreshTokenByOwnerIDDTOOutput, error) {
+	out := &dto.GetRefreshTokenByOwnerIDDTOOutput{}
+	values, err := r.client.HGetAll(ctx, r.key(id)).Result()
 
 	if err != nil {
-		if err == redis.Nil {
-			return nil, repository.ErrUserNotFound
+		return nil, err
+	}
+
+	if len(values) == 0 {
+		return nil, repository.ErrRefreshTokenNotFound
+	}
+
+	if tokenID, ok := values["id"]; ok {
+		convertedTokenID, err := strconv.ParseInt(tokenID, 10, 64)
+		if err != nil {
+			return nil, err
 		}
-		return nil, err
+		if convertedTokenID <= 0 {
+			return nil, repository.ErrInvalidRefreshTokenFound
+		}
+		out.ID = convertedTokenID
+	} else {
+		return nil, repository.ErrInvalidRefreshTokenFound
 	}
 
-	err = json.Unmarshal([]byte(val), &refreshToken)
-
-	if err != nil {
-		return nil, err
+	if tokenHash, ok := values["token_hash"]; ok && tokenHash != "" {
+		out.TokenHash = tokenHash
+	} else {
+		return nil, repository.ErrInvalidRefreshTokenFound
 	}
 
-	return &refreshToken, nil
+	if expiresAt, ok := values["expires_at"]; ok && expiresAt != "" {
+		t, err := time.Parse(time.RFC3339, expiresAt)
+		if err != nil {
+			return nil, err
+		}
+		out.ExpiresAt = t
+	} else {
+		return nil, repository.ErrInvalidRefreshTokenFound
+	}
+
+	return out, nil
 }
 
 func (r *RefreshTokenRepoCacheRedis) DeleteRefreshTokenByOwnerID(ctx context.Context, id int64) error {
-	return r.client.Del(ctx, fmt.Sprintf("services:users:cache:refresh_tokens:%d", id)).Err()
+	return r.client.Del(ctx, r.key(id)).Err()
 }

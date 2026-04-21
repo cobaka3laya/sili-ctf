@@ -4,25 +4,26 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 )
 
 type UserAuthDataRepository interface {
-	CreateUserAuthData(ctx context.Context, userID int64, hashedPassword string) (*domain.UserAuthData, error)
+	CreateUserAuthData(ctx context.Context, data dto.CreateUserAuthDataDTOInput) (*dto.CreateUserAuthDataDTOOutput, error)
 
-	GetUserAuthDataByUserID(ctx context.Context, id int64) (*domain.UserAuthData, error)
+	GetUserAuthDataByUserID(ctx context.Context, id int64) (*dto.GetUserAuthDataByUserIDDTOOutput, error)
 
-	UpdateUserAuthDataByUserID(ctx context.Context, id int64, userAuthData domain.UserAuthData) (*domain.UserAuthData, error)
+	UpdateUserAuthDataByUserID(ctx context.Context, id int64, data dto.UpdateUserAuthDataDTOInput) error
 
 	DeleteUserAuthDataByUserID(ctx context.Context, id int64) error
 }
 
 type UserAuthDataCacheRepository interface {
-	SetUserAuthData(ctx context.Context, userAuthData domain.UserAuthData) error
+	SetUserAuthData(ctx context.Context, data dto.SetUserAuthDataByUserIDDTOInput) error
 
-	GetUserAuthDataByUserID(ctx context.Context, id int64) (*domain.UserAuthData, error)
+	GetUserAuthDataByUserID(ctx context.Context, id int64) (*dto.GetUserAuthDataByUserIDDTOOutput, error)
 
 	DeleteUserAuthDataByUserID(ctx context.Context, id int64) error
 }
 
 var ErrUserAuthDataNotFound = errors.New("user auth data not found")
+var ErrInvalidUserAuthDataFound = errors.New("invalid user auth data found")

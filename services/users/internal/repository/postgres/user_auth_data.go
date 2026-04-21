@@ -5,7 +5,7 @@ import (
 
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/dbtx"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/txcontext"
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,42 +26,38 @@ func (r *UserAuthDataPG) getExecutor(ctx context.Context) dbtx.DBTX {
 	return r.pool
 }
 
-func (r *UserAuthDataPG) CreateUserAuthData(ctx context.Context, userID int64, hashedPassword string) (*domain.UserAuthData, error) {
+func (r *UserAuthDataPG) CreateUserAuthData(ctx context.Context, data dto.CreateUserAuthDataDTOInput) (*dto.CreateUserAuthDataDTOOutput, error) {
 	executor := r.getExecutor(ctx)
 
-	createdUserAuthData, err := domain.NewUserAuthData(userID, hashedPassword)
+	out := &dto.CreateUserAuthDataDTOOutput{}
 
-	if err != nil {
-		return nil, err
-	}
-
-	err = executor.QueryRow(
+	err := executor.QueryRow(
 		ctx,
 		`INSERT INTO
 		users_auth_data (user_id, hashed_password)
 	 	VALUES ($1, $2)
-		RETURNING ID`,
-		userID,
-		hashedPassword,
-	).Scan(&createdUserAuthData.ID)
+		RETURNING id`,
+		data.UserID,
+		data.HashedPassword,
+	).Scan(&out.ID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return createdUserAuthData, nil
+	return out, nil
 }
 
-func (r *UserAuthDataPG) GetUserAuthDataByUserID(ctx context.Context, id int64) (*domain.UserAuthData, error) {
-	userAuthData := &domain.UserAuthData{}
+func (r *UserAuthDataPG) GetUserAuthDataByUserID(ctx context.Context, id int64) (*dto.GetUserAuthDataByUserIDDTOOutput, error) {
+	out := &dto.GetUserAuthDataByUserIDDTOOutput{}
 
 	err := r.pool.QueryRow(
 		ctx,
-		`SELECT id, user_id, hashed_password
+		`SELECT id, hashed_password
 		FROM users_auth_data
 		WHERE user_id = $1`,
 		id,
-	).Scan(&userAuthData.ID, &userAuthData.UserID, &userAuthData.HashedPassword)
+	).Scan(&out.ID, &out.HashedPassword)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -70,10 +66,10 @@ func (r *UserAuthDataPG) GetUserAuthDataByUserID(ctx context.Context, id int64) 
 		return nil, err
 	}
 
-	return userAuthData, nil
+	return out, nil
 }
 
-func (r *UserAuthDataPG) UpdateUserAuthDataByUserID(ctx context.Context, id int64, userAuthData domain.UserAuthData) (*domain.UserAuthData, error) {
+func (r *UserAuthDataPG) UpdateUserAuthDataByUserID(ctx context.Context, id int64, data dto.UpdateUserAuthDataDTOInput) error {
 	executor := r.getExecutor(ctx)
 
 	_, err := executor.Exec(
@@ -82,17 +78,11 @@ func (r *UserAuthDataPG) UpdateUserAuthDataByUserID(ctx context.Context, id int6
 		SET hashed_password = $1
 		WHERE user_id = $2
 		`,
-		userAuthData.HashedPassword,
+		data.HashedPassword,
 		id,
 	)
 
-	if err != nil {
-		return nil, err
-	}
-
-	updatedUserAuthData := userAuthData
-
-	return &updatedUserAuthData, nil
+	return err
 }
 
 func (r *UserAuthDataPG) DeleteUserAuthDataByUserID(ctx context.Context, id int64) error {
@@ -106,9 +96,5 @@ func (r *UserAuthDataPG) DeleteUserAuthDataByUserID(ctx context.Context, id int6
 		id,
 	)
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

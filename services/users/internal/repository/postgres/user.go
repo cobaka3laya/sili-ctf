@@ -2,11 +2,13 @@ package repository_postgres
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/dbtx"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/txcontext"
-	"github.com/cobaka3laya/sili-ctf/services/users/internal/domain"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
 
 	"github.com/jackc/pgx/v5"
@@ -28,44 +30,40 @@ func (r *UserRepoPG) getExecutor(ctx context.Context) dbtx.DBTX {
 	return r.pool
 }
 
-func (r *UserRepoPG) CreateUser(ctx context.Context, username string) (*domain.User, error) {
+func (r *UserRepoPG) CreateUser(ctx context.Context, data dto.CreateUserDTOInput) (*dto.CreateUserDTOOutput, error) {
 	executor := r.getExecutor(ctx)
 
 	now := time.Now()
-	createdUser, err := domain.NewUser(username, now)
+	out := &dto.CreateUserDTOOutput{CreatedAt: now, Username: data.Username}
 
-	if err != nil {
-		return nil, err
-	}
-
-	err = executor.QueryRow(
+	err := executor.QueryRow(
 		ctx,
 		`INSERT INTO
 		users (username, created_at, profile_picture_url)
 	 	VALUES ($1, $2, $3)
-		RETURNING ID`,
-		username,
+		RETURNING id`,
+		data.Username,
 		now,
 		"",
-	).Scan(&createdUser.ID)
+	).Scan(&out.ID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return createdUser, nil
+	return out, nil
 }
 
-func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	user := &domain.User{}
+func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error) {
+	output := dto.GetUserByIDDTOOutput{}
 
 	err := r.pool.QueryRow(
 		ctx,
-		`SELECT id, username, created_at, profile_picture_url
+		`SELECT username, created_at, profile_picture_url
 		FROM users
 		WHERE id = $1`,
 		id,
-	).Scan(&user.ID, &user.Username, &user.CreatedAt, &user.ProfilePictureUrl)
+	).Scan(&output.Username, &output.CreatedAt, &output.ProfilePictureURL)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -74,32 +72,39 @@ func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*domain.User, e
 		return nil, err
 	}
 
-	return user, nil
+	return &output, nil
 }
 
-func (r *UserRepoPG) UpdateUserByID(ctx context.Context, id int64, user domain.User) (*domain.User, error) {
+func (r *UserRepoPG) UpdateUserByID(ctx context.Context, id int64, data dto.UpdateUserDTOInput) error {
 	executor := r.getExecutor(ctx)
 
-	_, err := executor.Exec(
-		ctx,
-		`UPDATE users
-		SET username=$1, created_at=$2, profile_picture_url=$3
-		WHERE id = $4
-		`,
-		user.Username,
-		user.CreatedAt,
-		user.ProfilePictureUrl,
-		id,
-	)
+	updateArgs := []string{}
+	queryArgs := []any{}
+	i := 1
 
-	if err != nil {
-		return nil, err
+	if data.Username != nil {
+		updateArgs = append(updateArgs, fmt.Sprintf("username = $%d", i))
+		queryArgs = append(queryArgs, *data.Username)
+		i++
 	}
 
-	updatedUser := user
-	updatedUser.ID = id
+	if data.ProfilePictureURL != nil {
+		updateArgs = append(updateArgs, fmt.Sprintf("profile_picture_url = $%d", i))
+		queryArgs = append(queryArgs, *data.ProfilePictureURL)
+		i++
+	}
 
-	return &updatedUser, nil
+	queryArgs = append(queryArgs, id)
+
+	query := fmt.Sprintf(
+		"UPDATE users SET %s WHERE id = $%d",
+		strings.Join(updateArgs, ", "),
+		i,
+	)
+
+	_, err := executor.Exec(ctx, query, queryArgs...)
+
+	return err
 }
 
 func (r *UserRepoPG) DeleteUserByID(ctx context.Context, id int64) error {
@@ -113,9 +118,5 @@ func (r *UserRepoPG) DeleteUserByID(ctx context.Context, id int64) error {
 		id,
 	)
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

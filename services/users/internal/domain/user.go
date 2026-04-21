@@ -13,7 +13,7 @@ type User struct {
 	ID                int64     `json:"id"`
 	Username          string    `json:"username"`
 	CreatedAt         time.Time `json:"time"`
-	ProfilePictureUrl string    `json:"profile_picture_url"`
+	ProfilePictureURL string    `json:"profile_picture_url"`
 }
 
 var ErrUsernameTooShort = errors.New("username is too short")
