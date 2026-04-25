@@ -13,6 +13,7 @@ import (
 
 type UserRepoCacheRedis struct {
 	client *redis.Client
+	cfg    *config.UserCacheConfig
 }
 
 func NewUserCacheRepoRedis(client *redis.Client) repository.UserCacheRepository {
@@ -46,7 +47,7 @@ func (r *UserRepoCacheRedis) SetUser(ctx context.Context, data dto.SetUserDTOInp
 	}
 
 	pipe.HSet(ctx, currentKey, values)
-	pipe.Expire(ctx, currentKey, time.Duration(config.MustLoad().Data.User.Cache.Expires)*time.Minute)
+	pipe.Expire(ctx, currentKey, time.Duration(r.cfg.Expires)*time.Minute)
 	_, err := pipe.Exec(ctx)
 	return err
 }

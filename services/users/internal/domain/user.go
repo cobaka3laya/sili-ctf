@@ -19,16 +19,14 @@ type User struct {
 var ErrUsernameTooShort = errors.New("username is too short")
 var ErrUsernameTooLong = errors.New("username is too long")
 
-func NewUser(username string, createdAt time.Time) (*User, error) {
+func NewUser(username string, createdAt time.Time, cfg *config.UserConfig) (*User, error) {
 	usrName := strings.TrimSpace(username)
 
-	config := config.MustLoad()
-
-	if config.Data.User.Username.MinLength > utf8.RuneCountInString(usrName) {
+	if cfg.Username.MinLength > utf8.RuneCountInString(usrName) {
 		return nil, ErrUsernameTooShort
 	}
 
-	if config.Data.User.Username.MaxLength < utf8.RuneCountInString(usrName) {
+	if cfg.Username.MaxLength < utf8.RuneCountInString(usrName) {
 		return nil, ErrUsernameTooLong
 	}
 

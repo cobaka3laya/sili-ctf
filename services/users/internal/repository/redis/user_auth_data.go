@@ -14,6 +14,7 @@ import (
 
 type UserAuthDataRepoCacheRedis struct {
 	client *redis.Client
+	cfg    *config.UserAuthDataCacheConfig
 }
 
 func NewUserAuthDataCacheRepoRedis(client *redis.Client) repository.UserAuthDataCacheRepository {
@@ -43,7 +44,7 @@ func (r *UserAuthDataRepoCacheRedis) SetUserAuthData(ctx context.Context, data d
 	}
 
 	pipe.HSet(ctx, currentKey, values)
-	pipe.Expire(ctx, currentKey, time.Duration(config.MustLoad().Data.UserAuthData.Cache.Expires)*time.Minute)
+	pipe.Expire(ctx, currentKey, time.Duration(r.cfg.Expires)*time.Minute)
 	_, err := pipe.Exec(ctx)
 	return err
 }

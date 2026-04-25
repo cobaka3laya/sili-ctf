@@ -20,7 +20,7 @@ var ErrTokenHashEmpty = errors.New("token hash is empty")
 var ErrAlreadyExpired = errors.New("refresh token is already expired")
 var ErrTTLTooShort = errors.New("token ttl is to short")
 
-func NewRefreshToken(ownerID int64, tokenHash string, expiresAt time.Time) (*RefreshToken, error) {
+func NewRefreshToken(ownerID int64, tokenHash string, expiresAt time.Time, cfg *config.RefreshTokenConfig) (*RefreshToken, error) {
 	if ownerID <= 0 {
 		return nil, ErrInvalidOwnerID
 	}
@@ -33,9 +33,7 @@ func NewRefreshToken(ownerID int64, tokenHash string, expiresAt time.Time) (*Ref
 		return nil, ErrAlreadyExpired
 	}
 
-	cfg := config.MustLoad()
-
-	if time.Until(expiresAt) < time.Minute*time.Duration(cfg.Data.Token.Refresh.MinTTL) {
+	if time.Until(expiresAt) < time.Minute*time.Duration(cfg.MinTTL) {
 		return nil, ErrTTLTooShort
 	}
 

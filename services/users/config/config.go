@@ -50,18 +50,14 @@ type RefreshTokenConfig struct {
 	MinTTL int `yaml:"min_ttl" env:"DATA_TOKEN_REFRESH_MIN_TTL" env-default:"5"`
 }
 
-var cfg *Config
+func MustLoad() *Config {
+	var cfg Config
 
-func MustLoad() (*Config) {
-	if cfg != nil {
-		return cfg
-	}
-
-	err := cleanenv.ReadConfig("config/config.yaml", cfg)
+	err := cleanenv.ReadConfig("config/config.yaml", &cfg)
 
 	if err != nil {
 		panic(err)
 	}
 
-	return cfg
+	return &cfg
 }
