@@ -1,5 +1,16 @@
 package dto
 
+type LoginDTOInput struct {
+	Username string
+	Password string
+}
+
+type LoginDTOOutput struct {
+	UserID       int64
+	AccessToken  string
+	RefreshToken string
+}
+
 type RegisterDTOInput struct {
 	Username string
 	Password string
@@ -7,5 +18,18 @@ type RegisterDTOInput struct {
 
 type RegisterDTOOutput struct {
 	AccessToken  string
+	RefreshToken string
+}
+
+type RefreshDTOInput struct {
+	RefreshToken string
+}
+
+type RefreshDTOOutput struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+type LogoutDTOInput struct {
 	RefreshToken string
 }

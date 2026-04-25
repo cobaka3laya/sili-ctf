@@ -1,6 +1,11 @@
 package service
 
-import "github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
+import (
+	"context"
+
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/dto"
+	"github.com/cobaka3laya/sili-ctf/services/users/internal/repository"
+)
 
 type AuthService struct {
 	userRepo              repository.UserRepository
@@ -32,3 +37,11 @@ func NewAuthService(deps AuthServiceDeps) *AuthService {
 		refreshTokenCacheRepo: deps.repos.refreshTokenCacheRepo,
 	}
 }
+
+func (s *AuthService) Login(ctx context.Context, data dto.LoginDTOInput) (*dto.LoginDTOOutput, error)
+
+func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (*dto.RegisterDTOOutput, error)
+
+func (s *AuthService) Refresh(ctx context.Context, data dto.RefreshDTOInput) (*dto.RefreshDTOOutput, error)
+
+func (s *AuthService) Logout(ctx context.Context, data dto.LogoutDTOInput) error
