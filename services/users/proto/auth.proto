@@ -10,6 +10,8 @@ service AuthService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
 
   rpc Refresh(RefreshRequest) returns (RefreshResponse);
+
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
 }
 
 message LoginRequest {
@@ -40,4 +42,12 @@ message RefreshRequest {
 message RefreshResponse {
   string access_token = 1;
   string refresh_token = 2;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message LogoutResponse {
+  bool success = 1;
 }
