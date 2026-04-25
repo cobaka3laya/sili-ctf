@@ -9,7 +9,6 @@ import (
 
 type AuthHandler struct {
 	pb.UnimplementedAuthServiceServer
-	userService service.UserService
 	authService service.AuthService
 }
 
