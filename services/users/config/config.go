@@ -3,7 +3,9 @@ package config
 import "github.com/ilyakaznacheev/cleanenv"
 
 type Config struct {
-	Data DataConfig
+	Data    DataConfig    `yaml:"data"`
+	Service ServiceConfig `yaml:"service"`
+	Secrets SecretsConfig
 }
 
 // Data config
@@ -43,11 +45,31 @@ type UserAuthDataCacheConfig struct {
 // Data/Token config
 type TokenConfig struct {
 	Refresh RefreshTokenConfig `yaml:"refresh"`
+	Access  AccessTokenConfig  `yaml:"access"`
 }
 
 // Data/Token/Refresh config
 type RefreshTokenConfig struct {
 	MinTTL int `yaml:"min_ttl" env:"DATA_TOKEN_REFRESH_MIN_TTL" env-default:"5"`
+	TTL    int `yaml:"ttl" env:"DATA_TOKEN_REFRESH_TTL" env-default:"60000"`
+}
+
+// Data/Token/Access config
+type AccessTokenConfig struct {
+	TTL int `yaml:"ttl" env:"DATA_TOKEN_ACCESS_TTL" env-default:"15"`
+}
+
+// Service config
+type ServiceConfig struct {
+	Auth AuthServiceConfig `yaml:"auth"`
+}
+
+// Service/Auth config
+type AuthServiceConfig struct {
+	MinPasswordLength int `yaml:"min_password_length" env:"SERVICE_AUTH_MIN_PASSWORD_LENGTH" env-default:"8"`
+}
+type SecretsConfig struct {
+	JWTGenerationKey string `yaml:"-" env:"ACCESS_TOKEN_JWT_KEY" env-default:"mockkey"`
 }
 
 func MustLoad() *Config {

@@ -1,10 +1,10 @@
-package jwtutil
+package utils
 
 import (
-	"os"
 	"strconv"
 	"time"
 
+	"github.com/cobaka3laya/sili-ctf/services/users/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -13,9 +13,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-var key = []byte(os.Getenv("ACCESS_TOKEN_JWT_KEY"))
-
-func GenerateToken(userID int64, ttl time.Duration) (string, error) {
+func GenerateJWT(userID int64, ttl time.Duration, cfg *config.SecretsConfig) (string, error) {
 	stringUserID := strconv.FormatInt(userID, 10)
 
 	claims := Claims{
@@ -28,10 +26,10 @@ func GenerateToken(userID int64, ttl time.Duration) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(key)
+	return token.SignedString([]byte(cfg.JWTGenerationKey))
 }
 
-func ParseToken(tokenStr string) (*Claims, error) {
+func ParseJWT(tokenStr string, cfg *config.SecretsConfig) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
 		&Claims{},
@@ -39,7 +37,7 @@ func ParseToken(tokenStr string) (*Claims, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return key, nil
+			return []byte(cfg.JWTGenerationKey), nil
 		},
 	)
 

@@ -16,3 +16,9 @@ data:
   token:
     refresh:
       min_ttl: 5
+      ttl: 60000
+    access:
+      ttl: 15
+service:
+  auth:
+    min_password_length: 8

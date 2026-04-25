@@ -19,6 +19,11 @@ type RegisterDTOInput struct {
 type RegisterDTOOutput struct {
 	AccessToken  string
 	RefreshToken string
+	CacheErrors  struct {
+		User         error
+		UserAuthData error
+		RefreshToken error
+	}
 }
 
 type RefreshDTOInput struct {
