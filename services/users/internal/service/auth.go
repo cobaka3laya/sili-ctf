@@ -78,7 +78,6 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 	err = s.tx.WithinTx(
 		ctx,
 		func(ctx context.Context) error {
-			var err error
 			user, err := s.userRepo.CreateUser(ctx, dto.CreateUserDTOInput{Username: data.Username})
 
 			if err != nil {
@@ -104,10 +103,6 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 			}
 
 			outUserAuthData, err = domain.NewUserAuthData(outUser.ID, hashedPassword)
-
-			if err != nil {
-				return err
-			}
 
 			if err != nil {
 				return err
