@@ -2,6 +2,7 @@ package txcontext
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,23 +22,24 @@ func (m *Manager) WithinTx(ctx context.Context, fn func(ctx context.Context) err
 	tx, err := m.pool.Begin(ctx)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("txmanager: starting transaction failed: %w", err)
 	}
 
 	ctx = context.WithValue(ctx, txKey{}, tx)
 
 	if err = fn(ctx); err != nil {
 		tx.Rollback(ctx)
-		return err
+		return fmt.Errorf("txmanager: error during transaction: %w", err)
 	}
 
 	err = tx.Commit(ctx)
 
 	if err != nil {
 		tx.Rollback(ctx)
+		return fmt.Errorf("txmanager: commit failed: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 func TxFromContext(ctx context.Context) (pgx.Tx, bool) {
