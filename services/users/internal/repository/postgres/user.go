@@ -48,7 +48,7 @@ func (r *UserRepoPG) CreateUser(ctx context.Context, data dto.CreateUserDTOInput
 	).Scan(&out.ID)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo: create user failed: query row scan: %w", err)
 	}
 
 	return out, nil
@@ -69,7 +69,7 @@ func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByI
 		if err == pgx.ErrNoRows {
 			return nil, repository.ErrUserNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("repo: get user by id for %d failed: query row scan: %w", id, err)
 	}
 
 	return &output, nil
@@ -104,7 +104,11 @@ func (r *UserRepoPG) UpdateUserByID(ctx context.Context, id int64, data dto.Upda
 
 	_, err := executor.Exec(ctx, query, queryArgs...)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("repo: update user by id for %d failed: exec: %w", id, err)
+	}
+
+	return nil
 }
 
 func (r *UserRepoPG) DeleteUserByID(ctx context.Context, id int64) error {
@@ -118,5 +122,9 @@ func (r *UserRepoPG) DeleteUserByID(ctx context.Context, id int64) error {
 		id,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("repo: delete user by id for %d failed: exec: %w", id, err)
+	}
+
+	return nil
 }

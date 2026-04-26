@@ -2,6 +2,7 @@ package repository_postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/dbtx"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/txcontext"
@@ -43,7 +44,7 @@ func (r *RefreshTokenRepoPG) CreateRefreshToken(ctx context.Context, data dto.Cr
 	).Scan(&createdRefreshToken.ID)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo: create refresh token query row failed: %w", err)
 	}
 
 	return createdRefreshToken, nil
@@ -64,7 +65,7 @@ func (r *RefreshTokenRepoPG) GetRefreshTokenByOwnerID(ctx context.Context, id in
 		if err == pgx.ErrNoRows {
 			return nil, repository.ErrRefreshTokenNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("repo: get refresh token by owner id for %d failed: query row scan: %w", id, err)
 	}
 
 	return refreshToken, nil
@@ -81,5 +82,9 @@ func (r *RefreshTokenRepoPG) DeleteRefreshTokenByOwnerID(ctx context.Context, id
 		id,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("repo: delete refresh token by owner id for %d failed: exec: %w", id, err)
+	}
+
+	return nil
 }

@@ -2,6 +2,7 @@ package repository_postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/dbtx"
 	"github.com/cobaka3laya/sili-ctf/services/users/internal/db/txcontext"
@@ -42,7 +43,7 @@ func (r *UserAuthDataPG) CreateUserAuthData(ctx context.Context, data dto.Create
 	).Scan(&out.ID)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo: create user auth data failed: query row scan: %w", err)
 	}
 
 	return out, nil
@@ -63,7 +64,7 @@ func (r *UserAuthDataPG) GetUserAuthDataByUserID(ctx context.Context, id int64) 
 		if err == pgx.ErrNoRows {
 			return nil, repository.ErrUserAuthDataNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("repo: get user auth data by user id for %d failed: query row scan: %w", id, err)
 	}
 
 	return out, nil
@@ -82,7 +83,11 @@ func (r *UserAuthDataPG) UpdateUserAuthDataByUserID(ctx context.Context, id int6
 		id,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("repo: update user auth data by user id for %d failed: exec: %w", id, err)
+	}
+
+	return nil
 }
 
 func (r *UserAuthDataPG) DeleteUserAuthDataByUserID(ctx context.Context, id int64) error {
@@ -96,5 +101,9 @@ func (r *UserAuthDataPG) DeleteUserAuthDataByUserID(ctx context.Context, id int6
 		id,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("repo: delete user auth data by user id for %d failed: exec: %w", id, err)
+	}
+
+	return nil
 }

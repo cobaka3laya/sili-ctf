@@ -36,6 +36,11 @@ func (r *RefreshTokenRepoCacheRedis) SetRefreshToken(ctx context.Context, data d
 	pipe.HSet(ctx, currentKey, values)
 	pipe.Expire(ctx, currentKey, time.Until(data.ExpiresAt))
 	_, err := pipe.Exec(ctx)
+
+	if err != nil {
+		return fmt.Errorf("cache: set refresh token for id %d failed: pipe exec: %w", data.ID, err)
+	}
+
 	return err
 }
 
@@ -44,7 +49,7 @@ func (r *RefreshTokenRepoCacheRedis) GetRefreshTokenByOwnerID(ctx context.Contex
 	values, err := r.client.HGetAll(ctx, r.key(id)).Result()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cache: get refresh token by owner id for %d failed: HGetAll: %w", id, err)
 	}
 
 	if len(values) == 0 {
@@ -54,7 +59,7 @@ func (r *RefreshTokenRepoCacheRedis) GetRefreshTokenByOwnerID(ctx context.Contex
 	if tokenID, ok := values["id"]; ok {
 		convertedTokenID, err := strconv.ParseInt(tokenID, 10, 64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cache: get refresh token by owner id for %d failed: ParseInt tokenID for %s: %w", id, tokenID, err)
 		}
 		if convertedTokenID <= 0 {
 			return nil, repository.ErrInvalidRefreshTokenFound
@@ -73,7 +78,7 @@ func (r *RefreshTokenRepoCacheRedis) GetRefreshTokenByOwnerID(ctx context.Contex
 	if expiresAt, ok := values["expires_at"]; ok && expiresAt != "" {
 		t, err := time.Parse(time.RFC3339, expiresAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cache: get refresh token by owner id for %d failed: time.Parse expiresAt for %s: %w", id, expiresAt, err)
 		}
 		out.ExpiresAt = t
 	} else {
@@ -84,5 +89,11 @@ func (r *RefreshTokenRepoCacheRedis) GetRefreshTokenByOwnerID(ctx context.Contex
 }
 
 func (r *RefreshTokenRepoCacheRedis) DeleteRefreshTokenByOwnerID(ctx context.Context, id int64) error {
-	return r.client.Del(ctx, r.key(id)).Err()
+	err := r.client.Del(ctx, r.key(id)).Err()
+
+	if err != nil {
+		return fmt.Errorf("cache: delete refresh token by owner id for %d failed: Del: %w", id, err)
+	}
+
+	return nil
 }

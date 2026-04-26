@@ -46,7 +46,12 @@ func (r *UserAuthDataRepoCacheRedis) SetUserAuthData(ctx context.Context, data d
 	pipe.HSet(ctx, currentKey, values)
 	pipe.Expire(ctx, currentKey, time.Duration(r.cfg.Expires)*time.Minute)
 	_, err := pipe.Exec(ctx)
-	return err
+
+	if err != nil {
+		return fmt.Errorf("cache: set user auth data for user id %d failed: pipe exec: %w", data.UserID, err)
+	}
+
+	return nil
 }
 
 func (r *UserAuthDataRepoCacheRedis) GetUserAuthDataByUserID(ctx context.Context, id int64) (*dto.GetUserAuthDataByUserIDDTOOutput, error) {
@@ -54,7 +59,7 @@ func (r *UserAuthDataRepoCacheRedis) GetUserAuthDataByUserID(ctx context.Context
 	values, err := r.client.HGetAll(ctx, r.key(id)).Result()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cache: get user auth data by user id for %d failed: HGetAll: %w", err)
 	}
 
 	if len(values) == 0 {
@@ -64,7 +69,7 @@ func (r *UserAuthDataRepoCacheRedis) GetUserAuthDataByUserID(ctx context.Context
 	if userAuthDataID, ok := values["id"]; ok {
 		convertedID, err := strconv.ParseInt(userAuthDataID, 10, 64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cache: get user auth data by user id for %d failed: ParseInt userAuthDataID for %s: %w", id, userAuthDataID, err)
 		}
 		out.ID = convertedID
 	} else {
@@ -81,5 +86,11 @@ func (r *UserAuthDataRepoCacheRedis) GetUserAuthDataByUserID(ctx context.Context
 }
 
 func (r *UserAuthDataRepoCacheRedis) DeleteUserAuthDataByUserID(ctx context.Context, id int64) error {
-	return r.client.Del(ctx, r.key(id)).Err()
+	err := r.client.Del(ctx, r.key(id)).Err()
+
+	if err != nil {
+		return fmt.Errorf("cache: delete user auth data by user id for %d failed: Del: %w", id, err)
+	}
+
+	return nil
 }

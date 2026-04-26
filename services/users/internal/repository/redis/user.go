@@ -49,7 +49,12 @@ func (r *UserRepoCacheRedis) SetUser(ctx context.Context, data dto.SetUserDTOInp
 	pipe.HSet(ctx, currentKey, values)
 	pipe.Expire(ctx, currentKey, time.Duration(r.cfg.Expires)*time.Minute)
 	_, err := pipe.Exec(ctx)
-	return err
+
+	if err != nil {
+		return fmt.Errorf("cache: set user for id %d failed: pipe exec: %w", data.ID, err)
+	}
+
+	return nil
 }
 
 func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error) {
@@ -57,7 +62,7 @@ func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.Ge
 	values, err := r.client.HGetAll(ctx, r.key(id)).Result()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cache: get user by id for %d failed: HGetAll: %w", id, err)
 	}
 
 	if len(values) == 0 {
@@ -73,7 +78,7 @@ func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.Ge
 	if createdAt, ok := values["created_at"]; ok && createdAt != "" {
 		t, err := time.Parse(time.RFC3339, createdAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cache: get user by id for %d failed: time.Parse createdAt for %s: %w", id, createdAt, err)
 		}
 		out.CreatedAt = t
 	} else {
@@ -91,5 +96,11 @@ func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.Ge
 }
 
 func (r *UserRepoCacheRedis) DeleteUserByID(ctx context.Context, id int64) error {
-	return r.client.Del(ctx, r.key(id)).Err()
+	err := r.client.Del(ctx, r.key(id)).Err()
+
+	if err != nil {
+		return fmt.Errorf("cache delete user by id for %d failed: Del: %w")
+	}
+
+	return nil
 }
