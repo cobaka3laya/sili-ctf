@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -26,7 +27,13 @@ func GenerateJWT(userID int64, ttl time.Duration, cfg *config.SecretsConfig) (st
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(cfg.JWTGenerationKey))
+	signedString, err := token.SignedString([]byte(cfg.JWTGenerationKey))
+
+	if err != nil {
+		return "", fmt.Errorf("utils: generate JWT failed for user id %d: token.SignedString: %w", userID, signedString)
+	}
+
+	return signedString, nil
 }
 
 func ParseJWT(tokenStr string, cfg *config.SecretsConfig) (*Claims, error) {
@@ -42,7 +49,7 @@ func ParseJWT(tokenStr string, cfg *config.SecretsConfig) (*Claims, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("utils: parse JWT failed for token string %s: jwt.ParseWithClaims: %w", tokenStr, err)
 	}
 
 	claims, ok := token.Claims.(*Claims)
