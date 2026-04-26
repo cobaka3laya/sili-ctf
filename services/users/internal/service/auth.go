@@ -64,13 +64,13 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 	hashedPassword, err := utils.HashPassword(data.Password)
 
 	if err != nil {
-		return nil, err
+		return nil, registerError(data.Username, err)
 	}
 
 	out.RefreshToken, err = utils.GenerateRefreshToken()
 
 	if err != nil {
-		return nil, err
+		return nil, registerError(data.Username, err)
 	}
 
 	hashedRefreshToken := utils.HashRefreshToken(out.RefreshToken)
@@ -81,13 +81,13 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 			user, err := s.userRepo.CreateUser(ctx, dto.CreateUserDTOInput{Username: data.Username})
 
 			if err != nil {
-				return err
+				return registerError(data.Username, err)
 			}
 
 			outUser, err = domain.NewUser(user.Username, user.CreatedAt, &s.cfg.Data.User)
 
 			if err != nil {
-				return err
+				return registerError(data.Username, err)
 			}
 
 			_, err = s.userAuthDataRepo.CreateUserAuthData(
@@ -99,13 +99,13 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 			)
 
 			if err != nil {
-				return err
+				return registerError(data.Username, err)
 			}
 
 			outUserAuthData, err = domain.NewUserAuthData(outUser.ID, hashedPassword)
 
 			if err != nil {
-				return err
+				return registerError(data.Username, err)
 			}
 
 			refreshToken, err := s.refreshTokenRepo.CreateRefreshToken(
@@ -118,13 +118,13 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 			)
 
 			if err != nil {
-				return err
+				return registerError(data.Username, err)
 			}
 
 			outRefreshToken, err = domain.NewRefreshToken(outUser.ID, hashedRefreshToken, refreshToken.ExpiresAt, &s.cfg.Data.Token.Refresh)
 
 			if err != nil {
-				return err
+				return registerError(data.Username, err)
 			}
 
 			return nil
@@ -132,7 +132,7 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, registerError(data.Username, err)
 	}
 
 	if outUser == nil || outUserAuthData == nil || outRefreshToken == nil {
@@ -142,7 +142,7 @@ func (s *AuthService) Register(ctx context.Context, data dto.RegisterDTOInput) (
 	out.AccessToken, err = utils.GenerateJWT(outUser.ID, time.Duration(s.cfg.Data.Token.Access.TTL)*time.Minute, &s.cfg.Secrets)
 
 	if err != nil {
-		return nil, err
+		return nil, registerError(data.Username, err)
 	}
 
 	err = s.userCacheRepo.SetUser(
