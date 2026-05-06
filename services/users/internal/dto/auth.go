@@ -9,6 +9,9 @@ type LoginDTOOutput struct {
 	UserID       int64
 	AccessToken  string
 	RefreshToken string
+	CacheErrors  struct {
+		RefreshToken error
+	}
 }
 
 type RegisterDTOInput struct {

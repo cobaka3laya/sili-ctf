@@ -51,7 +51,7 @@ func (r *RefreshTokenRepoPG) CreateRefreshToken(ctx context.Context, data dto.Cr
 }
 
 func (r *RefreshTokenRepoPG) GetRefreshTokenByOwnerID(ctx context.Context, id int64) (*dto.GetRefreshTokenByOwnerIDDTOOutput, error) {
-	refreshToken := &dto.GetRefreshTokenByOwnerIDDTOOutput{}
+	out := &dto.GetRefreshTokenByOwnerIDDTOOutput{}
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -59,7 +59,7 @@ func (r *RefreshTokenRepoPG) GetRefreshTokenByOwnerID(ctx context.Context, id in
 		FROM refresh_tokens
 		WHERE owner_id = $1`,
 		id,
-	).Scan(&refreshToken.ID, &refreshToken.TokenHash, &refreshToken.ExpiresAt)
+	).Scan(&out.ID, &out.TokenHash, &out.ExpiresAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -68,7 +68,7 @@ func (r *RefreshTokenRepoPG) GetRefreshTokenByOwnerID(ctx context.Context, id in
 		return nil, fmt.Errorf("repo: get refresh token by owner id for %d failed: query row scan: %w", id, err)
 	}
 
-	return refreshToken, nil
+	return out, nil
 }
 
 func (r *RefreshTokenRepoPG) DeleteRefreshTokenByOwnerID(ctx context.Context, id int64) error {
