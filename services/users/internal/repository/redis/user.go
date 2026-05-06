@@ -3,6 +3,7 @@ package repository_redis
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/cobaka3laya/sili-ctf/services/users/config"
@@ -20,13 +21,23 @@ func NewUserCacheRepoRedis(client *redis.Client) repository.UserCacheRepository 
 	return &UserRepoCacheRedis{client: client}
 }
 
-func (r *UserRepoCacheRedis) key(id int64) string {
+func (r *UserRepoCacheRedis) idKey(id int64) string {
 	return fmt.Sprintf("services:users:cache:users:id:%d", id)
+}
+
+func (r *UserRepoCacheRedis) usernameKey(username string) string {
+	return fmt.Sprintf("services:users:cache:users:username:%s", username)
 }
 
 func (r *UserRepoCacheRedis) SetUser(ctx context.Context, data dto.SetUserDTOInput) error {
 	pipe := r.client.Pipeline()
-	currentKey := r.key(data.ID)
+
+	idKey := r.idKey(data.ID)
+	var usernameKey string
+
+	if data.Username != nil {
+		usernameKey = r.usernameKey(*data.Username)
+	}
 
 	values := map[string]any{}
 
@@ -46,8 +57,13 @@ func (r *UserRepoCacheRedis) SetUser(ctx context.Context, data dto.SetUserDTOInp
 		return repository.ErrInvalidUserFound
 	}
 
-	pipe.HSet(ctx, currentKey, values)
-	pipe.Expire(ctx, currentKey, time.Duration(r.cfg.Expires)*time.Minute)
+	pipe.HSet(ctx, idKey, values)
+	pipe.Expire(ctx, idKey, time.Duration(r.cfg.Expires)*time.Minute)
+
+	if usernameKey != "" {
+		pipe.Set(ctx, usernameKey, data.ID, time.Duration(r.cfg.Expires)*time.Minute)
+	}
+
 	_, err := pipe.Exec(ctx)
 
 	if err != nil {
@@ -57,9 +73,9 @@ func (r *UserRepoCacheRedis) SetUser(ctx context.Context, data dto.SetUserDTOInp
 	return nil
 }
 
-func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error) {
-	out := &dto.GetUserByIDDTOOutput{}
-	values, err := r.client.HGetAll(ctx, r.key(id)).Result()
+func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.GetUserDTOOutput, error) {
+	out := &dto.GetUserDTOOutput{ID: id}
+	values, err := r.client.HGetAll(ctx, r.idKey(id)).Result()
 
 	if err != nil {
 		return nil, fmt.Errorf("cache: get user by id for %d failed: HGetAll: %w", id, err)
@@ -95,8 +111,24 @@ func (r *UserRepoCacheRedis) GetUserByID(ctx context.Context, id int64) (*dto.Ge
 	return out, nil
 }
 
+func (r *UserRepoCacheRedis) GetUserIDByUsername(ctx context.Context, username string) (int64, error) {
+	id, err := r.client.Get(ctx, r.usernameKey(username)).Result()
+
+	if err != nil {
+		return 0, fmt.Errorf("cache: get user id by username for %s failed: Get: %w", username, err)
+	}
+
+	parsedID, err := strconv.ParseInt(id, 10, 64)
+
+	if err != nil {
+		return 0, fmt.Errorf("cache: get user id by username for %s failed: strconv.Parse id for %s: %w", username, id, err)
+	}
+
+	return parsedID, nil
+}
+
 func (r *UserRepoCacheRedis) DeleteUserByID(ctx context.Context, id int64) error {
-	err := r.client.Del(ctx, r.key(id)).Err()
+	err := r.client.Del(ctx, r.idKey(id)).Err()
 
 	if err != nil {
 		return fmt.Errorf("cache delete user by id for %d failed: Del: %w")

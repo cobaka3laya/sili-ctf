@@ -10,7 +10,9 @@ import (
 type UserRepository interface {
 	CreateUser(ctx context.Context, data dto.CreateUserDTOInput) (*dto.CreateUserDTOOutput, error)
 
-	GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error)
+	GetUserByID(ctx context.Context, id int64) (*dto.GetUserDTOOutput, error)
+
+	GetUserByUsername(ctx context.Context, username string) (*dto.GetUserDTOOutput, error)
 
 	UpdateUserByID(ctx context.Context, id int64, data dto.UpdateUserDTOInput) error
 
@@ -20,7 +22,9 @@ type UserRepository interface {
 type UserCacheRepository interface {
 	SetUser(ctx context.Context, data dto.SetUserDTOInput) error
 
-	GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error)
+	GetUserByID(ctx context.Context, id int64) (*dto.GetUserDTOOutput, error)
+
+	GetUserIDByUsername(ctx context.Context, username string) (int64, error)
 
 	DeleteUserByID(ctx context.Context, id int64) error
 }

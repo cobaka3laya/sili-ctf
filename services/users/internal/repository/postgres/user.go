@@ -54,8 +54,8 @@ func (r *UserRepoPG) CreateUser(ctx context.Context, data dto.CreateUserDTOInput
 	return out, nil
 }
 
-func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByIDDTOOutput, error) {
-	output := dto.GetUserByIDDTOOutput{}
+func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*dto.GetUserDTOOutput, error) {
+	out := &dto.GetUserDTOOutput{ID: id}
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -63,7 +63,7 @@ func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByI
 		FROM users
 		WHERE id = $1`,
 		id,
-	).Scan(&output.Username, &output.CreatedAt, &output.ProfilePictureURL)
+	).Scan(out.Username, out.CreatedAt, out.ProfilePictureURL)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -72,7 +72,28 @@ func (r *UserRepoPG) GetUserByID(ctx context.Context, id int64) (*dto.GetUserByI
 		return nil, fmt.Errorf("repo: get user by id for %d failed: query row scan: %w", id, err)
 	}
 
-	return &output, nil
+	return out, nil
+}
+
+func (r *UserRepoPG) GetUserByUsername(ctx context.Context, username string) (*dto.GetUserDTOOutput, error) {
+	out := &dto.GetUserDTOOutput{Username: username}
+
+	err := r.pool.QueryRow(
+		ctx,
+		`SELECT id, created_at, profile_picture_url
+		FROM users
+		WHERE username = $1`,
+		username,
+	).Scan(out.ID, out.CreatedAt, out.ProfilePictureURL)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, repository.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("repo: get user by username for %s failed: query row scan: %w", username, err)
+	}
+
+	return out, nil
 }
 
 func (r *UserRepoPG) UpdateUserByID(ctx context.Context, id int64, data dto.UpdateUserDTOInput) error {

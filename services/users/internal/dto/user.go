@@ -17,7 +17,8 @@ type UpdateUserDTOInput struct {
 	ProfilePictureURL *string
 }
 
-type GetUserByIDDTOOutput struct {
+type GetUserDTOOutput struct {
+	ID                int64
 	Username          string
 	CreatedAt         time.Time
 	ProfilePictureURL string
